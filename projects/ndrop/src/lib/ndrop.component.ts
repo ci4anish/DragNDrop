@@ -4,6 +4,12 @@ import {
 import {DragulaService} from 'ng2-dragula/ng2-dragula';
 import {NdropItemComponent} from './ndrop-item/ndrop-item.component';
 
+interface CursorElement {
+  originalElement: HTMLElement;
+  cloneElement: HTMLElement;
+  coordinates: { left: number; top: number; };
+}
+
 @Component({
   selector: 'N-NDrop',
   templateUrl: './ndrop.component.html',
@@ -54,7 +60,7 @@ export class NDropComponent implements OnInit, OnChanges, OnDestroy {
   private ctrlBtnCode: number = NDropComponent.isMacintosh() ? 91 : 17;
   private ctrlBtnPressed: boolean = false;
   private shiftBtnPressed: boolean = false;
-  private cursorElements: Array<{ originalElement: HTMLElement, cloneElement: HTMLElement }> = [];
+  private cursorElements: CursorElement[] = [];
   private transitionEvent: string = NDropComponent.whichTransitionEvent();
   private returnCursorsAnimationTimer: any;
   private lastSelectedItem: any;
@@ -308,7 +314,7 @@ export class NDropComponent implements OnInit, OnChanges, OnDestroy {
         borderRadius: '6px',
         transformOrigin: 'left',
         border: '1px solid #e8eaed',
-        transition: 'left 0.15s ease-out, top 0.15s ease-out',
+        transition: '0.15s',
         boxShadow: 'none'
       };
 
@@ -331,7 +337,11 @@ export class NDropComponent implements OnInit, OnChanges, OnDestroy {
 
       this.cursorElements.push({
         originalElement: cursorElement,
-        cloneElement: cloneElement
+        cloneElement: cloneElement,
+        coordinates: {
+          left: rect.left,
+          top: rect.top
+        }
       });
     });
   }
@@ -362,28 +372,30 @@ export class NDropComponent implements OnInit, OnChanges, OnDestroy {
 
   private attachCursorClonesToMouse(x: number, y: number) {
     this.cursorElements.forEach((elements, index: number) => {
+
       const styles: any = {
-        transform: 'scale(0.8)',
+        // transform: `translate3d(${x - elements.coordinates.left}px,${y - elements.coordinates.top}px,0)`,
       };
+      // scale(0.8)
+
       // move last element a bit for styling
       if (this.cursorElements.length > 1 && index === 0) {
-        styles.left = x - 3 + 'px';
-        styles.top = y - 3 + 'px';
+        styles.transform = `translateX(${x - elements.coordinates.left - 3}px) translateY(${y - elements.coordinates.top - 3}px)`;
       } else {
-        styles.left = x + 'px';
-        styles.top = y + 'px';
+        styles.transform = `translateX(${x - elements.coordinates.left}px) translateY(${y - elements.coordinates.top}px)`;
       }
+
 
       // If transition is set and element is near the mouse we don't need transition any more
       if (elements.cloneElement.style.transition !== 'unset') {
         const elementCoordinates = elements.cloneElement.getBoundingClientRect();
 
         if (this.isElementInArea(x, y, elementCoordinates.left, elementCoordinates.top, 15)) {
-          styles.transition = 'unset';
+          elements.cloneElement.style.transition = 'unset';
         }
       }
 
-      Object.assign(elements.cloneElement.style, styles);
+      elements.cloneElement.style.transform = styles.transform;
     });
   }
 
@@ -425,9 +437,10 @@ export class NDropComponent implements OnInit, OnChanges, OnDestroy {
       const styles = {
         left: targetRect.left + 'px',
         top: targetRect.top + 'px',
-        transform: 'scale(1)',
+        // transform: 'scale(1)',
+        transform: `translateX(0) translateY(0)`,
         boxShadow: 'none',
-        transition: 'left 0.15s, top 0.15s'
+        transition: '0.15s'
       };
 
       const transitionCb = (event: TransitionEvent) => {
